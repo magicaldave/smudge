@@ -1,3 +1,36 @@
+
+Skip to content
+Pull requests
+Issues
+Codespaces
+Marketplace
+Explore
+@magicaldave
+danielfm /
+smudge
+Public
+
+Code
+Issues 18
+Pull requests 8
+Actions
+Projects
+Wiki
+Security
+
+    Insights
+
+smudge/smudge-api.el
+This commit does not belong to any branch on this repository, and may belong to a fork outside of the repository.
+@cole-brown
+cole-brown Fix for `smudge-api-oauth2-callback' not updating.
+Latest commit 2de1572 Feb 15, 2022
+History
+3 contributors
+@jkdufair
+@cole-brown
+@danielfm
+634 lines (559 sloc) 23.3 KB
 ;;; smudge-api.el --- Smudge API integration layer  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2014-2019 Daniel Fernandes Martins
@@ -51,15 +84,23 @@ globally relevant."
   :group 'smudge
   :type 'string)
 
-(defcustom smudge-oauth2-callback-port "8080"
-  "The port for the httpd to listen on for the OAuth2 callback."
+(defcustom smudge-oauth2-callback-url "http://localhost"
+  "Protocol & host for the httpd to listen on for the OAuth2 callback.
+Full url is built by the function `smudge-api-oauth2-callback-url'."
   :group 'smudge
   :type 'string)
 
-(defcustom smudge-oauth2-callback-endpoint "/smudge-api-callback"
-  "The endpoint for the httpd to listen on for the OAuth2 callback."
+(defcustom smudge-oauth2-callback-port "8080"
+  "The port for the httpd to listen on for the OAuth2 callback.
+Full url is built by the function `smudge-api-oauth2-callback-url'."
   :group 'smudge
-  :type 'string)
+  :type  'string)
+
+(defcustom smudge-oauth2-callback-endpoint "smudge-api-callback"
+  "The endpoint for the httpd to listen on for the OAuth2 callback.
+Full url is built by the function `smudge-api-oauth2-callback-url'."
+  :group 'smudge
+  :type  'string)
 
 (declare-function oauth2-request-access "oauth2")
 (declare-function oauth2-refresh-access "oauth2")
@@ -79,11 +120,36 @@ This is used to manually refresh the token when it's about to expire.")
 (defvar smudge-is-authorizing nil
   "Whether smudge is in the process of obtaining an OAuth2 token.")
 
-(defconst smudge-api-endpoint     "https://api.spotify.com/v1")
+(defconst smudge-api-endpoint         "https://api.spotify.com/v1")
 (defconst smudge-api-oauth2-auth-url  "https://accounts.spotify.com/authorize")
 (defconst smudge-api-oauth2-token-url "https://accounts.spotify.com/api/token")
 (defconst smudge-api-oauth2-scopes    "playlist-read-private playlist-read-collaborative playlist-modify-public playlist-modify-private user-read-private user-read-playback-state user-modify-playback-state user-read-playback-state user-read-recently-played")
-(defconst smudge-api-oauth2-callback  (concat "http://localhost:" smudge-oauth2-callback-port smudge-oauth2-callback-endpoint))
+
+(defun smudge-api-oauth2-callback-url ()
+  "Builds the full URL for the local httpd server.
+Custom variables used:
+  - `smudge-oauth2-callback-url'
+  - `smudge-oauth2-callback-port'
+  - `smudge-oauth2-callback-endpoint'"
+  ;; Build full url.
+  (format
+   ;; Format based on what pieces of the url are set.
+   (cond ((and smudge-oauth2-callback-port
+               smudge-oauth2-callback-endpoint)
+          "%1$s:%2$s/%3$s")
+         (smudge-oauth2-callback-port
+          "%1$s:%2$s")
+         (smudge-oauth2-callback-endpoint
+          "%1$s/%3$s")
+         (t
+          "%1$s"))
+   ;; By field numbers:
+   ;; 1$ - URL (schema & host)
+   smudge-oauth2-callback-url
+   ;; 2$ - port
+   smudge-oauth2-callback-port
+   ;; 3$ - path (endpoint)
+   smudge-oauth2-callback-endpoint))
 
 (defun smudge-api-httpd-stop ()
   "Workaround due to bug in simple-httpd `httpd-stop`."
@@ -206,34 +272,34 @@ of fetching via another call to this method."
 	      smudge-api-oauth2-token)
 	  (setq smudge-is-authorizing t)
 	  (let ((token (smudge-api-oauth2-auth smudge-api-oauth2-auth-url
-					       smudge-api-oauth2-token-url
-					       smudge-oauth2-client-id
-					       smudge-oauth2-client-secret
-					       smudge-api-oauth2-scopes
-					       nil
-					       smudge-api-oauth2-callback)))
-	    (setq smudge-is-authorizing nil)
-	    (smudge-api-persist-token token now)
-	    (if (null token)
-		(user-error "OAuth2 authentication failed")
-	      token)))
+                                               smudge-api-oauth2-token-url
+                                               smudge-oauth2-client-id
+                                               smudge-oauth2-client-secret
+                                               smudge-api-oauth2-scopes
+                                               nil
+                                               (smudge-api-oauth2-callback-url))))
+            (setq smudge-is-authorizing nil)
+            (smudge-api-persist-token token now)
+            (if (null token)
+                (user-error "OAuth2 authentication failed")
+              token)))
       ;; Spotify tokens appear to expire in 3600 seconds (60 min). We renew
       ;; at 3000 (50 min) to play it safe
       (if (> now (+ smudge-api-oauth2-ts 3000))
-	  (let* ((inhibit-message t)
-		 (token (oauth2-refresh-access smudge-api-oauth2-token)))
-	    (smudge-api-persist-token token now)
-	    (if (null token)
-		(user-error "Could not refresh OAuth2 token")
-	      token))
-	smudge-api-oauth2-token))))
+          (let* ((inhibit-message t)
+                 (token (oauth2-refresh-access smudge-api-oauth2-token)))
+            (smudge-api-persist-token token now)
+            (if (null token)
+                (user-error "Could not refresh OAuth2 token")
+              token))
+        smudge-api-oauth2-token))))
 
 (defun smudge-api-call-async (method uri &optional data callback)
   "Make a request to the given Spotify service endpoint URI via METHOD.
 Call CALLBACK with the parsed JSON response."
   (request (concat smudge-api-endpoint uri)
     :headers `(("Authorization" .
-		,(format "Bearer %s" (oauth2-token-access-token (smudge-api-retrieve-oauth2-token))))
+                ,(format "Bearer %s" (oauth2-token-access-token (smudge-api-retrieve-oauth2-token))))
 	       ("Accept" . "application/json")
 	       ("Content-Type" . "application/json")
 	       ("Content-Length" . ,(length data)))
@@ -598,3 +664,20 @@ Call CALLBACK if provided."
 
 (provide 'smudge-api)
 ;;; smudge-api.el ends here
+Footer
+© 2023 GitHub, Inc.
+Footer navigation
+
+    Terms
+    Privacy
+    Security
+    Status
+    Docs
+    Contact GitHub
+    Pricing
+    API
+    Training
+    Blog
+    About
+
+smudge/smudge-api.el at 2de15724c81ddeb09c39b34f0b6bc47874501769 · danielfm/smudge
