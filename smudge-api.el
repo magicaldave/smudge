@@ -1,36 +1,3 @@
-
-Skip to content
-Pull requests
-Issues
-Codespaces
-Marketplace
-Explore
-@magicaldave
-danielfm /
-smudge
-Public
-
-Code
-Issues 18
-Pull requests 8
-Actions
-Projects
-Wiki
-Security
-
-    Insights
-
-smudge/smudge-api.el
-This commit does not belong to any branch on this repository, and may belong to a fork outside of the repository.
-@cole-brown
-cole-brown Fix for `smudge-api-oauth2-callback' not updating.
-Latest commit 2de1572 Feb 15, 2022
-History
-3 contributors
-@jkdufair
-@cole-brown
-@danielfm
-634 lines (559 sloc) 23.3 KB
 ;;; smudge-api.el --- Smudge API integration layer  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2014-2019 Daniel Fernandes Martins
@@ -127,6 +94,7 @@ This is used to manually refresh the token when it's about to expire.")
 
 (defun smudge-api-oauth2-callback-url ()
   "Builds the full URL for the local httpd server.
+
 Custom variables used:
   - `smudge-oauth2-callback-url'
   - `smudge-oauth2-callback-port'
@@ -664,20 +632,3 @@ Call CALLBACK if provided."
 
 (provide 'smudge-api)
 ;;; smudge-api.el ends here
-Footer
-© 2023 GitHub, Inc.
-Footer navigation
-
-    Terms
-    Privacy
-    Security
-    Status
-    Docs
-    Contact GitHub
-    Pricing
-    API
-    Training
-    Blog
-    About
-
-smudge/smudge-api.el at 2de15724c81ddeb09c39b34f0b6bc47874501769 · danielfm/smudge
