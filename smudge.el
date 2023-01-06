@@ -37,6 +37,7 @@
 (require 'smudge-playlist)
 (require 'smudge-device-select)
 (require 'smudge-controller)
+(require 'smudge-connect)
 (require 'smudge-remote)
 
 (smudge-when-darwin    (require 'smudge-apple))
